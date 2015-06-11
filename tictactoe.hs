@@ -2,28 +2,18 @@
 -- Make a main loop so that you can start over
 
 import System.IO
-import System.IO.Unsafe
 
 import Data.List
-import Data.Maybe
 import Data.Function
 
 import Text.Read
 
-import System.Random
-
+data Player = Player Int | Nobody deriving (Show, Eq, Ord)
+data Move = Move (Int, Int) deriving (Show, Eq, Ord)
 data Board = Board [[Int]]
 instance Show Board where
     show (Board b) = "\n" ++ intercalate "\n-----------\n"  
                      (map ((++) " " . intercalate " | " . (map (token . Player))) b) ++ "\n"
-
-data Move = Move (Int, Int) deriving (Show, Eq, Ord)
-
-data Player = Player Int deriving (Eq, Ord)
-instance Show Player where
-    show (Player 1) = "Player 1"
-    show (Player 2) = "Player 2"
-    show (Player _) = "Nobody"
 
 play :: Player -> Move -> Board -> Board
 play (Player p) (Move m) (Board b) = Board $ 
@@ -31,14 +21,15 @@ play (Player p) (Move m) (Board b) = Board $
     [(take (snd m) (b !! (fst m)) ++ [p] ++ (drop ((snd m) + 1) (b !! (fst m))))] ++
     (drop ((fst m) + 1) b)
 
-check :: Board -> Maybe Player
+check :: Board -> Player
 check (Board b) 
-  | [1,1,1] `elem` b ++ (transpose b) = Just (Player 1)
-  | [2,2,2] `elem` b ++ (transpose b) = Just (Player 2)
-  | [1,1,1] == (zipWith (!!) b [0,1,2]) || [1,1,1] == (zipWith (!!) b [2,1,0]) = Just (Player 1)
-  | [2,2,2] == (zipWith (!!) b [0,1,2]) || [2,2,2] == (zipWith (!!) b [2,1,0]) = Just (Player 2)
-  | foldl1 (*) (map (foldl1 (*)) b) /= 0 = Just (Player 0)
-check _ = Nothing
+  | [1,1,1] `elem` b ++ (transpose b) = Player 1
+  | [2,2,2] `elem` b ++ (transpose b) = Player 2
+  | [1,1,1] == (zipWith (!!) b [0,1,2]) || [1,1,1] == (zipWith (!!) b [2,1,0]) = Player 1
+  | [2,2,2] == (zipWith (!!) b [0,1,2]) || [2,2,2] == (zipWith (!!) b [2,1,0]) = Player 2
+  | foldl1 (*) (map (foldl1 (*)) b) /= 0 = Player 0
+  | otherwise = Nobody
+check _ = undefined
 
 inputTable :: [(Int, Int)]
 inputTable = [undefined,(2,0),(2,1),(2,2),(1,0),(1,1),(1,2),(0,0),(0,1),(0,2)]
@@ -54,21 +45,23 @@ other (Player _) = Player 0
 color :: Player -> Int
 color (Player 2) = -1
 color (Player 1) = 1
-color _ = undefined
+color (Player 0) = 0
 
 token :: Player -> String
-token (Player 1) = "X"
-token (Player 2) = "O"
+token (Player 1) = "\x1b[31mX\x1b[37m"
+token (Player 2) = "\x1b[34mO\x1b[37m"
 token _ = " "
 
 possibleMoves :: Board -> [Move]
 possibleMoves (Board b) = [Move (y, x) | x <- [0,1,2], y <- [0,1,2], b !! y !! x == 0]
 
+somebody :: Player -> Bool
+somebody (Player _) = True
+somebody Nobody = False
+
 minimax :: Board -> Player -> Int
 minimax (Board b) (Player p)
-  | isJust $ check $ Board b = if (fromJust (check (Board b))) == (Player 2) then -1 
-                               else if (fromJust (check $ Board b)) == (Player 1) then 1 
-                               else 0
+  | somebody . check . Board $ b = color . check . Board $ b
   | p == 1 = maximum $ map 
                          (\m -> minimax (play (Player p) m (Board b)) (Player 2)) 
                          (possibleMoves (Board b))
@@ -98,14 +91,6 @@ bestMoves (Board b) (Player p) =
 -- IMPURE CODE
 --------------------------------------------
 
-randNum :: Int -> Int
-randNum l = unsafePerformIO $ randomRIO (0, l)
-
-aIMove :: Board -> Player -> Int -> Move
-aIMove (Board b) (Player p) d =
-    (bestMoves (Board b) (Player p)) !! 
-        (((randNum $ length $ bestMoves (Board b) (Player p)) * d) `div` 10)
-
 wrongMove :: Board -> Player -> Int -> IO ()
 wrongMove (Board b) (Player p) d = do
     putStr $ "\nYou didn't input a valid number,\n" ++
@@ -121,19 +106,15 @@ chooseMove (Board b) (Player p) d = do
               wrongMove (Board b) (Player p) d)
           maybeMove
 
-endGame :: Maybe Player -> IO ()
-endGame (Just (Player w))
-    | w == 1 = do
-        putStrLn "Player 1 is the winner!"
-    | w == 2 = do
-        putStrLn "Player 2 is the winner!"
-    | otherwise = do
-        putStrLn "It's a draw!"
+endGame :: Player -> IO ()
+endGame (Player 1) = do putStrLn "Player 1 is the winner!"
+endGame (Player 2) = do putStrLn "Player 2 is the winner!"
+endGame (Player 0) = do putStrLn "It's a draw!"
 endGame _ = error "endGame failed"
 
 game :: Player -> Board -> Int -> IO ()
 game (Player p) (Board b) d
-    | isJust $ check $ Board b = do
+    | somebody . check . Board $ b = do
         putStrLn $ (show . Board $ b) 
         endGame (check $ Board b)
     | p == 1 = do
