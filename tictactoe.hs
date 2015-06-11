@@ -2,9 +2,11 @@
 -- Make a main loop so that you can start over
 
 import System.IO
+import System.Exit
 
 import Data.List
 import Data.Function
+import Data.Char
 
 import Text.Read
 
@@ -107,10 +109,24 @@ chooseMove (Board b) (Player p) d = do
           maybeMove
 
 endGame :: Player -> IO ()
-endGame (Player 1) = do putStrLn "Player 1 is the winner!"
-endGame (Player 2) = do putStrLn "Player 2 is the winner!"
-endGame (Player 0) = do putStrLn "It's a draw!"
+endGame (Player 1) = do 
+    putStrLn "Player 1 is the winner!"
+    restartGame
+endGame (Player 2) = do 
+    putStrLn "Player 2 is the winner!"
+    restartGame
+endGame (Player 0) = do 
+    putStrLn "It's a draw!"
+    restartGame
 endGame _ = error "endGame failed"
+
+restartGame :: IO ()
+restartGame = do
+    putStr "Do you want to start another game (Y/N): "
+    maybeYes <- fmap (map toUpper) getLine
+    if (maybeYes == "Y") then choosePlayer 
+    else if (maybeYes == "N") then exitSuccess 
+    else restartGame
 
 game :: Player -> Board -> Int -> IO ()
 game (Player p) (Board b) d
