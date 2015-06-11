@@ -57,13 +57,27 @@ somebody :: Player -> Bool
 somebody (Player _) = True
 somebody Nobody = False
 
+maximumUntil :: Ord a => (a -> Bool) -> [a] -> a
+maximumUntil _ [a] = a
+maximumUntil f (a:as)
+    | f a = a
+    | a > maximumUntil f as = a
+    | otherwise = maximumUntil f as
+
+minimumUntil :: Ord a => (a -> Bool) -> [a] -> a
+minimumUntil _ [a] = a
+minimumUntil f (a:as)
+    | f a = a
+    | a < minimumUntil f as = a
+    | otherwise = minimumUntil f as
+
 minimax :: Board -> Player -> Int
 minimax (Board b) (Player p)
   | somebody . check . Board $ b = color . check . Board $ b
-  | p == 1 = maximum $ map 
+  | p == 1 = maximumUntil (== 1) $ map 
                          (\m -> minimax (play (Player p) m (Board b)) (Player 2)) 
                          (possibleMoves (Board b))
-  | p == 2 = minimum $ map 
+  | p == 2 = minimumUntil (== -1) $ map 
                          (\m -> minimax (play (Player p) m $ Board b) $ Player 1) 
                          $ possibleMoves $ Board b
   | otherwise = error "minimax failed for some reason"
