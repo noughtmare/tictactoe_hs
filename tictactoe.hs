@@ -1,6 +1,3 @@
--- TODO: 
--- Make a main loop so that you can start over
-
 import System.IO
 import System.Exit
 
@@ -31,7 +28,6 @@ check (Board b)
   | [2,2,2] == (zipWith (!!) b [0,1,2]) || [2,2,2] == (zipWith (!!) b [2,1,0]) = Player 2
   | foldl1 (*) (map (foldl1 (*)) b) /= 0 = Player 0
   | otherwise = Nobody
-check _ = undefined
 
 inputTable :: [(Int, Int)]
 inputTable = [undefined,(2,0),(2,1),(2,2),(1,0),(1,1),(1,2),(0,0),(0,1),(0,2)]
@@ -72,18 +68,9 @@ minimax (Board b) (Player p)
                          $ possibleMoves $ Board b
   | otherwise = error "minimax failed for some reason"
 
--- TODO: Make this return [Move]
 bestMove :: Board -> Player -> Move
 bestMove (Board b) (Player p) = 
     maximumBy
-        (compare `on` 
-            (\m -> (color (Player p)) * (minimax
-                (play (Player p) m $ Board b) $ other $ Player p))) $ 
-        possibleMoves $ Board b
-
-bestMoves :: Board -> Player -> [Move]
-bestMoves (Board b) (Player p) =
-    sortBy
         (compare `on` 
             (\m -> (color (Player p)) * (minimax
                 (play (Player p) m $ Board b) $ other $ Player p))) $ 
@@ -150,16 +137,8 @@ choosePlayer = do
     putStr $ "Do you want to be first or second player (1 or 2): "
     maybePlayer <- fmap readMaybe getLine :: IO (Maybe Int)
     maybe (choosePlayer)
-          (\p -> if (p == 1 || p == 2) then chooseDifficulty (Player p) else choosePlayer)
+          (\p -> if (p == 1 || p == 2) then game (Player p) emptyBoard (0) else choosePlayer)
           (maybePlayer)
-
-chooseDifficulty :: Player -> IO ()
-chooseDifficulty (Player p) = do
-    putStr $ "\nWhat difficulty would you like to play (0,10): "
-    maybeDifficulty <- fmap readMaybe getLine :: IO (Maybe Int)
-    maybe (chooseDifficulty (Player p))
-          (\d -> if (d > (-1) && d < 11) then game (Player p) emptyBoard (0) else chooseDifficulty (Player p))
-          (maybeDifficulty)
 
 main :: IO ()
 main = do
